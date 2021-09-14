@@ -24,7 +24,7 @@ def cohen_kappa(ann1, ann2):
     for an1, an2 in zip(ann1, ann2):
         if an1 == an2:
             count += 1
-    A = (count / len(ann1)) * (count / len(ann2))  # observed agreement A (Po)
+    A = count / len(ann1)  # observed agreement A (Po)
     uniq = set(ann1 + ann2)
     E = 0  # expected agreement E (Pe)
     for item in uniq:
