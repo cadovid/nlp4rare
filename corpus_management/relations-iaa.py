@@ -318,9 +318,9 @@ def main():
 
     if len(sys.argv) == 1:
         try:
-            # Replace these two variable by desired directory paths
-            dir_path_one = r"C:\Users\Usuario\Desktop\UC3M_NLP\example\annotator_one"
-            dir_path_two = r"C:\Users\Usuario\Desktop\UC3M_NLP\example\annotator_two"
+            # Replace the next two variable by desired directory paths
+            dir_path_one = r"C:\..."
+            dir_path_two = r"C:\..."
             if not os.path.isdir(dir_path_one) or not os.path.isdir(dir_path_two):
                 raise NotValidPath
             print('Directories path used:\n\t{}\n\t{}'.format(dir_path_one, dir_path_two))
