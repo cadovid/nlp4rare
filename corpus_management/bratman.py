@@ -226,7 +226,7 @@ def main():
 
     if len(sys.argv) == 1:
         try:
-            dir_path = r"C:\Users\Usuario\Desktop\UC3M_NLP\annotations\gold_nlp4rare_corpus\training" # Replace this variable by desired directory path
+            dir_path = r"C:\..." # Replace this variable by desired directory path
             if not os.path.isdir(dir_path):
                 raise NotValidPath
             print('Directory path used: {}'.format(dir_path))
