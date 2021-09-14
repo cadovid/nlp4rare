@@ -206,6 +206,87 @@ def count_entities(path, count_df=None):
         print("Oops!", e.__class__, "occurred. Execution not performed.")
 
 
+def count_particular_entities(path):
+    """This function evaluates the Nr of discontinuous, overlapped and nested entities for a given set of brat files
+    inside an indicated directory.
+
+        Args:
+            path (str): Directory which contains the annotations (brat files).
+
+        Returns:
+            None : A csv file inside the directory is generated.
+    """
+    extension = '*.ann'
+    start_time = time.time()
+    discontinuous_entities = 0
+    overlapped_entities = 0
+    nested_entities = 0
+    iteration = 0
+    files = glob.glob(os.path.join(path, extension))
+
+    for file in files:
+        header_list = ["id", "type", "text"]
+        ann_df = pd.read_csv(file, header=None, sep='\t', lineterminator='\n', names=header_list)
+
+        # Getting entities dataframe only
+        mask_entities = ann_df["id"].str.startswith("T")
+        entities_df = ann_df[mask_entities].copy()
+        del ann_df, mask_entities
+        gc.collect()
+
+        # Getting entities + offsets dataframe
+        split_entities_df = entities_df['type'].str.replace(';', ' ').str.split(' ', expand=True).copy()
+        split_entities_df.fillna(value=np.nan, inplace=True)
+        nr_columns = int(len(split_entities_df.columns))
+        for nr in range(1, nr_columns):
+            split_entities_df.iloc[:, nr] = split_entities_df.iloc[:, nr].astype('float32')
+        del entities_df
+        gc.collect()
+
+        # Discontinuous entities
+        if nr_columns > 3:
+            discontinuous_entities += split_entities_df.iloc[:, 3].count().sum()
+
+        # Overlapped entities
+        split_entities_df.drop(columns=[0], inplace=True)
+        values = split_entities_df.to_numpy()
+        set_values = set(map(tuple, values))
+        overlapped_entities += len(values)-len(set_values)
+        del split_entities_df, set_values
+        gc.collect()
+
+        # Nested entities
+        nr_columns = nr_columns - 1
+        assert nr_columns % 2 == 0, "Bad Nr of columns"
+        nr_packs_offsets = int(nr_columns / 2)
+        limits_offset = []
+        for _ in range(0, nr_packs_offsets):
+            limits_offset.append([(_ * 2), (_ * 2) + 2])
+        for _ in range(0, len(values)):
+            for pack in limits_offset:
+                baseline_offset = values[_][pack[0]:pack[1]]
+                for offset in values:
+                    for _pack in limits_offset:
+                        to_compare_offset = offset[_pack[0]:_pack[1]]
+                        if (to_compare_offset[0] >= baseline_offset[0]) and (to_compare_offset[1] < baseline_offset[1]):
+                            nested_entities += 1
+                        elif (to_compare_offset[0] > baseline_offset[0]) and (to_compare_offset[1] <= baseline_offset[1]):
+                            nested_entities += 1
+        del values, limits_offset
+        gc.collect()
+        iteration += 1
+
+    # Output
+    output_name = r'!dis_over_nested_entities.txt'
+    dict_result = {'discontinuous': discontinuous_entities, 'overlapped': overlapped_entities, 'nested': nested_entities}
+    result_df = pd.DataFrame.from_dict(dict_result, orient='index', columns=['Total Nr'])
+    result_df.to_csv(path + '\\' + output_name, encoding='utf-8', sep='\t', line_terminator='\n')
+    del result_df, dict_result
+    gc.collect()
+    print('\n****\tCOUNT OPERATION\t****\nTotal files processed: {}. Elapsed time: {:.2f} seconds.'.format(iteration, time.time() - start_time))
+    print('Output file saved in:\n\tDirectory: "{}"'.format(path))
+    
+    
 def main():
     """
         Params:
@@ -219,6 +300,7 @@ def main():
                 arg1 = '-c': count entities in brat files
                        '-o': order brat files
                        '-co or -oc': order and count brat files (in this order)
+                       '-p': count particular entities in brat files
                 arg2 = dir_path
     """
     import sys
@@ -236,6 +318,9 @@ def main():
             print('Count entities inside BRAT files? [Y/N]')
             input_order = input()
             count_entities(dir_path) if input_order == 'Y' or input_order == 'y' else print('Execution not performed.')
+            print('Count particular entities inside BRAT files? [Y/N]')
+            input_order = input()
+            count_particular_entities(dir_path) if input_order == 'Y' or input_order == 'y' else print('Execution not performed.')
         except NotValidPath:
             print("Directory path introduced is not valid!! Please, introduce a valid path.")
 
@@ -251,6 +336,9 @@ def main():
             print('Count entities inside BRAT files? [Y/N]')
             input_order = input()
             count_entities(dir_path) if input_order == 'Y' or input_order == 'y' else print('Execution not performed.')
+            print('Count particular entities inside BRAT files? [Y/N]')
+            input_order = input()
+            count_particular_entities(dir_path) if input_order == 'Y' or input_order == 'y' else print('Execution not performed.')
         except NotValidPath:
             print("Directory path introduced is not valid!! Please, introduce a valid path.")
 
@@ -267,6 +355,8 @@ def main():
             elif sys.argv[1] == '-co' or sys.argv[1] == '-oc':
                 order_brat(dir_path)
                 count_entities(dir_path)
+            elif sys.argv[1] == '-p':
+                count_particular_entities(dir_path)
             else:
                 print('Not valid arguments provided. Check instructions.')
         except NotValidPath:
